@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora Eletroposto - Operação</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f6f7fb; color:#111; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    .grid { display: grid; gap: 14px; grid-template-columns: 1.1fr 0.9fr; }
+    @media (max-width: 920px){ .grid{ grid-template-columns:1fr; } }
+    .card { background:#fff; border:1px solid #e6e8f0; border-radius: 14px; padding: 14px; box-shadow: 0 4px 16px rgba(20,25,40,.04); }
+    .card h2 { margin: 0 0 10px; font-size: 16px; }
+    .row { display:grid; grid-template-columns: 1fr 180px; gap: 10px; align-items:center; margin: 8px 0; }
+    .row label { font-size: 13px; color:#222; }
+    input { padding: 10px 10px; border:1px solid #d9dcec; border-radius: 10px; font-size: 14px; background:#fff; }
+    input[readonly] { background:#f3f5ff; }
+    .hint { font-size: 12px; color:#556; margin-top: 8px; line-height: 1.4; }
+    .two { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px){ .two{ grid-template-columns:1fr; } }
+    .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; background:#eef9ff; border:1px solid #d7f0ff; color:#0b4a6b; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Calculadora do Eletroposto (Operação)</h1>
+    <div class="hint">
+      <span class="badge">Regra</span>
+      A taxa fixa de <b>R$ 2,00 por recarga</b> é <b>dos proprietários</b> e <b>não entra</b> na base das taxas (%).
+    </div>
+
+    <div class="grid" style="margin-top:12px;">
+      <div class="card">
+        <h2>Inputs</h2>
+
+        <div class="two">
+            <div class="row">
+              <label>kWh vendidos por dia</label>
+              <input id="kwhDia" type="number" min="0" step="0.1" value="100">
+            </div>
+            <div class="row">
+              <label>Recargas por dia (sessões)</label>
+              <input id="recargasDia" type="number" min="0" step="1" value="5">
+            </div>
+            <div class="row">
+              <label>Dias por mês (média)</label>
+              <input id="diasMes" type="number" min="1" step="1" value="30">
+            </div>
+            <div class="row">
+              <label>Preço ao cliente (R$/kWh)</label>
+              <input id="precoKwh" type="number" min="0" step="0.01" value="2.50">
+            </div>
+            <div class="row">
+              <label>Taxa proprietários por recarga (R$)</label>
+              <input id="taxaFixa" type="number" min="0" step="0.01" value="2.00">
+            </div>
+            <div class="row">
+              <label>Custo energia (R$/kWh)</label>
+              <input id="custoKwh" type="number" min="0" step="0.01" value="0.70">
+            </div>
+        </div>
+
+        <h2 style="margin-top:14px;">Taxas sobre o faturamento de kWh</h2>
+        <div class="two">
+          <div class="row">
+            <label>Gestão/Operação (%)</label>
+            <input id="pGestao" type="number" min="0" step="0.01" value="12">
+          </div>
+          <div class="row">
+            <label>Mercado (%)</label>
+            <input id="pMercado" type="number" min="0" step="0.01" value="5">
+          </div>
+          <div class="row">
+            <label>Cartão (%)</label>
+            <input id="pCartao" type="number" min="0" step="0.01" value="2">
+          </div>
+          <div class="row">
+            <label>Fiscal (%)</label>
+            <input id="pFiscal" type="number" min="0" step="0.01" value="8">
+          </div>
+        </div>
+        <div class="hint">
+          Total de taxas = <b id="taxasTotaisTxt">27,00%</b> <span class="muted">(aplicado somente sobre a receita de kWh)</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Resultados</h2>
+
+        <div class="row">
+          <label>Receita de kWh / dia</label>
+          <input id="outReceitaKwhDia" readonly>
+        </div>
+        <div class="row">
+          <label>Taxas (%) sobre kWh / dia</label>
+          <input id="outTaxasDia" readonly>
+        </div>
+        <div class="row">
+          <label>Custo de energia / dia</label>
+          <input id="outEnergiaDia" readonly>
+        </div>
+
+        <div class="row">
+          <label>Taxa proprietários / dia</label>
+          <input id="outTaxaFixaDia" readonly>
+        </div>
+
+        <div class="row">
+          <label><b>Lucro líquido / dia</b></label>
+          <input id="outLiquidoDia" readonly>
+        </div>
+
+        <div class="row">
+          <label><b>Lucro líquido / mês</b></label>
+          <input id="outLiquidoMes" readonly>
+        </div>
+
+        <div class="hint">
+          <b>Fórmula:</b><br>
+          Lucro/dia = (Receita_kWh − Taxas% − Energia) + Taxa_proprietários
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmtBRL = (v) => (isFinite(v) ? v : 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    const fmtNum = (v, d=2) => (isFinite(v) ? v : 0).toLocaleString('pt-BR', { minimumFractionDigits:d, maximumFractionDigits:d });
+
+    function getVal(id){
+      const el = document.getElementById(id);
+      const n = Number(String(el.value).replace(',','.'));
+      return isFinite(n) ? n : 0;
+    }
+
+    function calc(){
+      const kwhDia = getVal('kwhDia');
+      const recargasDia = getVal('recargasDia');
+      const diasMes = Math.max(getVal('diasMes'), 1);
+
+      const precoKwh = getVal('precoKwh');
+      const taxaFixa = getVal('taxaFixa');
+      const custoKwh = getVal('custoKwh');
+
+      const pGestao = getVal('pGestao');
+      const pMercado = getVal('pMercado');
+      const pCartao  = getVal('pCartao');
+      const pFiscal  = getVal('pFiscal');
+
+      const pTaxas = (pGestao + pMercado + pCartao + pFiscal)/100;
+      document.getElementById('taxasTotaisTxt').textContent = fmtNum(pTaxas*100,2) + '%';
+
+      // Receita de kWh (base das %)
+      const receitaKwhDia = precoKwh * kwhDia;
+
+      // Taxa proprietários (fora da base)
+      const taxaPropDia = taxaFixa * recargasDia;
+
+      // Taxas (%) só sobre kWh
+      const taxasDia = receitaKwhDia * pTaxas;
+
+      // Energia
+      const energiaDia = kwhDia * custoKwh;
+
+      // Lucro líquido
+      const liquidoDia = (receitaKwhDia - taxasDia - energiaDia) + taxaPropDia;
+      const liquidoMes = liquidoDia * diasMes;
+
+      document.getElementById('outReceitaKwhDia').value = fmtBRL(receitaKwhDia);
+      document.getElementById('outTaxasDia').value = fmtBRL(taxasDia);
+      document.getElementById('outEnergiaDia').value = fmtBRL(energiaDia);
+      document.getElementById('outTaxaFixaDia').value = fmtBRL(taxaPropDia);
+      document.getElementById('outLiquidoDia').value = fmtBRL(liquidoDia);
+      document.getElementById('outLiquidoMes').value = fmtBRL(liquidoMes);
+    }
+
+    document.querySelectorAll('input').forEach(el => {
+      el.addEventListener('input', calc);
+      el.addEventListener('change', calc);
+    });
+    calc();
+  </script>
+</body>
+</html>
