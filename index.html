@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Calculadora Eletroposto - Operação</title>
+  <title>Calculadora Eletroposto</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f6f7fb; color:#111; }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 20px; }
     h1 { margin: 0 0 12px; font-size: 22px; }
     .grid { display: grid; gap: 14px; grid-template-columns: 1.1fr 0.9fr; }
     @media (max-width: 920px){ .grid{ grid-template-columns:1fr; } }
@@ -14,7 +14,7 @@
     .card h2 { margin: 0 0 10px; font-size: 16px; }
     .row { display:grid; grid-template-columns: 1fr 180px; gap: 10px; align-items:center; margin: 8px 0; }
     .row label { font-size: 13px; color:#222; }
-    input { padding: 10px 10px; border:1px solid #d9dcec; border-radius: 10px; font-size: 14px; background:#fff; }
+    input {  padding: 10px 10px; border:1px solid #d9dcec; border-radius: 10px; font-size: 14px; background:#fff; }
     input[readonly] { background:#f3f5ff; }
     .hint { font-size: 12px; color:#556; margin-top: 8px; line-height: 1.4; }
     .two { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -24,10 +24,10 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Calculadora do Eletroposto (Operação)</h1>
+    <h1>Calculadora do Eletroposto</h1>
     <div class="hint">
       <span class="badge">Regra</span>
-      A taxa fixa de <b>R$ 2,00 por recarga</b> é <b>dos proprietários</b> e <b>não entra</b> na base das taxas (%).
+      <b>Recargas/dia</b> influencia apenas a <b>taxa fixa (R$ 2,00)</b>. As % incidem somente sobre a <b>receita de kWh</b>.
     </div>
 
     <div class="grid" style="margin-top:12px;">
@@ -35,6 +35,7 @@
         <h2>Inputs</h2>
 
         <div class="two">
+          <div>
             <div class="row">
               <label>kWh vendidos por dia</label>
               <input id="kwhDia" type="number" min="0" step="0.1" value="100">
@@ -47,21 +48,25 @@
               <label>Dias por mês (média)</label>
               <input id="diasMes" type="number" min="1" step="1" value="30">
             </div>
+          </div>
+
+          <div>
             <div class="row">
               <label>Preço ao cliente (R$/kWh)</label>
               <input id="precoKwh" type="number" min="0" step="0.01" value="2.50">
             </div>
             <div class="row">
-              <label>Taxa proprietários por recarga (R$)</label>
-              <input id="taxaFixa" type="number" min="0" step="0.01" value="2.00">
-            </div>
-            <div class="row">
               <label>Custo energia (R$/kWh)</label>
               <input id="custoKwh" type="number" min="0" step="0.01" value="0.70">
             </div>
+            <div class="row">
+              <label>Taxa proprietários por recarga (R$)</label>
+              <input id="taxaFixa" type="number" min="0" step="0.01" value="2.00">
+            </div>
+          </div>
         </div>
 
-        <h2 style="margin-top:14px;">Taxas sobre o faturamento de kWh</h2>
+        <h2 style="margin-top:14px;">Taxas (%) sobre receita de kWh</h2>
         <div class="two">
           <div class="row">
             <label>Gestão/Operação (%)</label>
@@ -81,7 +86,7 @@
           </div>
         </div>
         <div class="hint">
-          Total de taxas = <b id="taxasTotaisTxt">27,00%</b> <span class="muted">(aplicado somente sobre a receita de kWh)</span>
+          Total de taxas = <b id="taxasTotaisTxt">27,00%</b> (aplicado somente sobre a receita de kWh)
         </div>
       </div>
 
@@ -92,10 +97,12 @@
           <label>Receita de kWh / dia</label>
           <input id="outReceitaKwhDia" readonly>
         </div>
+
         <div class="row">
           <label>Taxas (%) sobre kWh / dia</label>
           <input id="outTaxasDia" readonly>
         </div>
+
         <div class="row">
           <label>Custo de energia / dia</label>
           <input id="outEnergiaDia" readonly>
@@ -117,8 +124,7 @@
         </div>
 
         <div class="hint">
-          <b>Fórmula:</b><br>
-          Lucro/dia = (Receita_kWh − Taxas% − Energia) + Taxa_proprietários
+          <b>Lucro/dia</b> = (Receita_kWh − Taxas% − Energia) + (Taxa_fixa × recargas)
         </div>
       </div>
     </div>
@@ -140,8 +146,8 @@
       const diasMes = Math.max(getVal('diasMes'), 1);
 
       const precoKwh = getVal('precoKwh');
-      const taxaFixa = getVal('taxaFixa');
       const custoKwh = getVal('custoKwh');
+      const taxaFixa = getVal('taxaFixa');
 
       const pGestao = getVal('pGestao');
       const pMercado = getVal('pMercado');
@@ -151,19 +157,12 @@
       const pTaxas = (pGestao + pMercado + pCartao + pFiscal)/100;
       document.getElementById('taxasTotaisTxt').textContent = fmtNum(pTaxas*100,2) + '%';
 
-      // Receita de kWh (base das %)
       const receitaKwhDia = precoKwh * kwhDia;
-
-      // Taxa proprietários (fora da base)
-      const taxaPropDia = taxaFixa * recargasDia;
-
-      // Taxas (%) só sobre kWh
       const taxasDia = receitaKwhDia * pTaxas;
-
-      // Energia
       const energiaDia = kwhDia * custoKwh;
 
-      // Lucro líquido
+      const taxaPropDia = taxaFixa * recargasDia;
+
       const liquidoDia = (receitaKwhDia - taxasDia - energiaDia) + taxaPropDia;
       const liquidoMes = liquidoDia * diasMes;
 
